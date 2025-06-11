@@ -1,0 +1,44 @@
+[
+  {
+    "vorname": "Andreas",
+    "name": "Wollenhaupt",
+    "iban": "DE70701204008361905014",
+    "email": "awollenh@gmail.com"
+  },
+  {
+    "vorname": "Frank",
+    "name": "Becker",
+    "iban": "DE92701204008361905006",
+    "email": "fbecker@thishustle.de"
+  },
+  {
+    "vorname": "Maria",
+    "name": "Schmitz",
+    "iban": "DE70760300800310418533",
+    "email": "mariaschmitz@asdeals.de"
+  },
+  {
+    "vorname": "Kaleb",
+    "name": "Drous",
+    "iban": "DE97760300800113410659",
+    "email": "kdrous@lushbomb.de"
+  },
+  {
+    "vorname": "Sarah",
+    "name": "Kahn",
+    "iban": "DE08760300800340851847",
+    "email": "skahn@blankflag.de"
+  },
+  {
+    "vorname": "Kevin",
+    "name": "Lange",
+    "iban": "DE05100101782497025109",
+    "email": "klange@asdeals.de"
+  },
+  {
+    "vorname": "Anna",
+    "name": "Bayer",
+    "iban": "DE61201306002014932925",
+    "email": "abayer@lushbomb.de"
+  }
+] 

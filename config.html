@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GZG - Aktionen Konfiguration</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    .action-card { 
+      border: 1px solid #ddd; 
+      padding: 15px; 
+      margin: 10px 0; 
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .action-card:hover { background-color: #f5f5f5; }
+    .action-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .action-name { font-size: 1.2em; font-weight: bold; }
+    .person-count { 
+      background-color: #007bff; 
+      color: white; 
+      padding: 5px 10px; 
+      border-radius: 15px;
+      font-size: 0.9em;
+    }
+    .person-count.full { background-color: #dc3545; }
+    .person-count.available { background-color: #28a745; }
+    .hidden { display: none; }
+    button { 
+      padding: 10px 20px; 
+      font-size: 1em; 
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn-primary { background-color: #007bff; color: white; }
+    .btn-secondary { background-color: #6c757d; color: white; }
+    .btn-success { background-color: #28a745; color: white; }
+    .back-btn { margin-bottom: 20px; }
+    .entry-item {
+      border: 1px solid #eee;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
+    .person-data {
+      background-color: #e8f5e8;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border-left: 4px solid #28a745;
+    }
+    .form-group {
+      margin: 10px 0;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Hauptseite -->
+  <div id="mainPage">
+    <h1>GZG - Aktionen Übersicht</h1>
+    <button class="btn-primary" onclick="showNewActionForm()">Neue Aktion anlegen</button>
+    <div id="actionsList"></div>
+  </div>
+
+  <!-- Neue Aktion Formular -->
+  <div id="newActionPage" class="hidden">
+    <button class="btn-secondary back-btn" onclick="showMainPage()">← Zurück</button>
+    <h2>Neue Aktion anlegen</h2>
+    <form id="newActionForm">
+      <div class="form-group">
+        <label for="actionName">Aktionsname:</label>
+        <input type="text" id="actionName" required placeholder="z.B. Waschmittel GZG">
+      </div>
+      <div class="form-group">
+        <label for="actionDescription">Beschreibung:</label>
+        <input type="text" id="actionDescription" placeholder="Kurze Beschreibung der Aktion">
+      </div>
+      <button type="submit" class="btn-success">Aktion erstellen</button>
+    </form>
+  </div>
+
+  <!-- Aktion Detailseite -->
+  <div id="actionDetailPage" class="hidden">
+    <button class="btn-secondary back-btn" onclick="showMainPage()">← Zurück</button>
+    <h2 id="detailActionName">Aktion Details</h2>
+    
+    <div style="margin-bottom: 20px;">
+      <button class="btn-danger" onclick="deleteCurrentAction()" style="background-color: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+        🗑️ Aktion löschen
+      </button>
+    </div>
+    
+    <div class="person-data">
+      <h3>Verfügbare Personendatensätze</h3>
+      <div id="availablePersonsList">
+        <p>Lade Personendaten...</p>
+      </div>
+    </div>
+
+    <h3>Erfasste Einträge</h3>
+    <div id="entriesList">
+      <p>Lade Einträge...</p>
+    </div>
+  </div>
+
+  <script>
+    // Globale Variable für Aktionen
+    let actions = [];
+    let currentActionId = null;
+
+    // Aktionen vom Server laden
+    async function loadActionsFromServer() {
+      try {
+        const response = await fetch('/api/actions');
+        if (response.ok) {
+          actions = await response.json();
+        } else {
+          console.error('Fehler beim Laden der Aktionen:', response.status);
+          actions = [];
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Aktionen:', error);
+        actions = [];
+      }
+    }
+
+    // Neue Aktion zum Server senden
+    async function saveActionToServer(actionData) {
+      try {
+        const response = await fetch('/api/actions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(actionData)
+        });
+
+        if (response.ok) {
+          const newAction = await response.json();
+          actions.push(newAction);
+          return newAction;
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Fehler beim Speichern');
+        }
+      } catch (error) {
+        console.error('Fehler beim Speichern der Aktion:', error);
+        throw error;
+      }
+    }
+
+    // Hauptseite anzeigen
+    async function showMainPage() {
+      await loadActionsFromServer(); // Lade aktuelle Daten vom Server
+      document.getElementById('mainPage').classList.remove('hidden');
+      document.getElementById('newActionPage').classList.add('hidden');
+      document.getElementById('actionDetailPage').classList.add('hidden');
+      displayActions();
+    }
+
+    // Neue Aktion Formular anzeigen
+    function showNewActionForm() {
+      document.getElementById('mainPage').classList.add('hidden');
+      document.getElementById('newActionPage').classList.remove('hidden');
+      document.getElementById('actionDetailPage').classList.add('hidden');
+    }
+
+    // Aktionen anzeigen
+    function displayActions() {
+      const actionsList = document.getElementById('actionsList');
+      actionsList.innerHTML = '';
+
+      if (actions.length === 0) {
+        actionsList.innerHTML = '<p>Noch keine Aktionen vorhanden. Erstelle deine erste Aktion!</p>';
+        return;
+      }
+
+      actions.forEach(action => {
+        const actionCard = document.createElement('div');
+        actionCard.className = 'action-card';
+        actionCard.onclick = () => showActionDetail(action.id);
+
+        const personCountClass = action.personCount >= action.maxPersons ? 'full' : 
+                                action.personCount >= action.maxPersons * 0.7 ? '' : 'available';
+
+        actionCard.innerHTML = `
+          <div class="action-header">
+            <div class="action-name">${action.name}</div>
+            <div class="person-count ${personCountClass}">${action.personCount}/${action.maxPersons}</div>
+          </div>
+          <p>${action.description}</p>
+          <small>${action.entries.length} Einträge</small>
+        `;
+
+        actionsList.appendChild(actionCard);
+      });
+    }
+
+    // Verfügbare Personendaten laden und anzeigen
+    async function loadAvailablePersons(actionId) {
+      try {
+        const response = await fetch(`/api/actions/${actionId}/available-persons`);
+        if (response.ok) {
+          const availablePersons = await response.json();
+          displayAvailablePersons(availablePersons);
+        } else {
+          console.error('Fehler beim Laden der Personendaten:', response.status);
+          document.getElementById('availablePersonsList').innerHTML = '<p>Fehler beim Laden der Personendaten</p>';
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Personendaten:', error);
+        document.getElementById('availablePersonsList').innerHTML = '<p>Fehler beim Laden der Personendaten</p>';
+      }
+    }
+
+    // Verfügbare Personendaten anzeigen
+    function displayAvailablePersons(availablePersons) {
+      const availablePersonsList = document.getElementById('availablePersonsList');
+      
+      if (availablePersons.length === 0) {
+        availablePersonsList.innerHTML = '<p>Keine verfügbaren Personendatensätze mehr.</p>';
+        return;
+      }
+
+      availablePersonsList.innerHTML = `
+        <p><strong>${availablePersons.length} verfügbare Personendatensätze:</strong></p>
+        ${availablePersons.map((person, index) => `
+          <div style="background:#f0f8ff; padding:10px; margin:5px 0; border-radius:5px; border-left:4px solid #007bff;">
+            <strong>${person.vorname} ${person.name}</strong><br>
+            IBAN: ${person.iban}<br>
+            E-Mail: ${person.email}
+          </div>
+        `).join('')}
+      `;
+    }
+
+    // Einträge anzeigen
+    function displayEntries(action) {
+      const entriesList = document.getElementById('entriesList');
+      entriesList.innerHTML = '';
+
+      if (action.entries.length === 0) {
+        entriesList.innerHTML = '<p>Noch keine Einträge vorhanden.</p>';
+        return;
+      }
+
+      action.entries.forEach((entry, idx) => {
+        // Verwende den gespeicherten Dateinamen für das Bild
+        const jsonFile = entry.jsonFile || '';
+        const photoUrl = jsonFile ? `/api/photo/${jsonFile}` : '#';
+
+        const entryDiv = document.createElement('div');
+        entryDiv.className = 'entry-item';
+        
+        // Verwende die gespeicherten Personendaten
+        const personData = entry.personData || {};
+        
+        entryDiv.innerHTML = `
+          <strong>${idx + 1}. ${entry.product}</strong><br>
+          <small>Preis: ${entry.price} | Datum: ${entry.date}${entry.shop ? ' | Shop: ' + entry.shop : ''}</small><br>
+          <div class="person-data" style="background:#e8f5e8; margin:10px 0; border-radius:5px; border-left:4px solid #28a745;">
+            <b>Zugewiesener Personendatensatz:</b><br>
+            Name: ${personData.vorname} ${personData.name}<br>
+            IBAN: ${personData.iban}<br>
+            E-Mail: ${personData.email}
+          </div>
+          ${jsonFile ? `<a href="${photoUrl}" target="_blank">Quittungsbild anzeigen</a>` : ''}
+        `;
+        entriesList.appendChild(entryDiv);
+      });
+    }
+
+    // Aktion Details anzeigen
+    async function showActionDetail(actionId) {
+      currentActionId = actionId;
+      const action = actions.find(a => a.id === actionId);
+      if (!action) return;
+
+      document.getElementById('mainPage').classList.add('hidden');
+      document.getElementById('newActionPage').classList.add('hidden');
+      document.getElementById('actionDetailPage').classList.remove('hidden');
+
+      document.getElementById('detailActionName').textContent = action.name;
+      
+      // Lade verfügbare Personendaten
+      await loadAvailablePersons(actionId);
+      
+      // Zeige Einträge
+      displayEntries(action);
+    }
+
+    // Neue Aktion erstellen
+    document.getElementById('newActionForm').onsubmit = async function(e) {
+      e.preventDefault();
+      
+      const name = document.getElementById('actionName').value;
+      const description = document.getElementById('actionDescription').value;
+
+      try {
+        await saveActionToServer({ name, description });
+        showMainPage();
+        
+        // Formular zurücksetzen
+        document.getElementById('actionName').value = '';
+        document.getElementById('actionDescription').value = '';
+      } catch (error) {
+        alert('Fehler beim Erstellen der Aktion: ' + error.message);
+      }
+    };
+
+    // Aktion löschen
+    async function deleteCurrentAction() {
+      if (!currentActionId) return;
+      
+      const action = actions.find(a => a.id === currentActionId);
+      if (!action) return;
+      
+      // Bestätigung vom Benutzer
+      const confirmed = confirm(`Möchten Sie die Aktion "${action.name}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!`);
+      
+      if (!confirmed) return;
+      
+      try {
+        const response = await fetch(`/api/actions/${currentActionId}`, {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          // Aktion aus der lokalen Liste entfernen
+          actions = actions.filter(a => a.id !== currentActionId);
+          
+          // Zurück zur Hauptseite
+          showMainPage();
+          
+          // Erfolgsmeldung
+          alert('Aktion erfolgreich gelöscht!');
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Fehler beim Löschen');
+        }
+      } catch (error) {
+        console.error('Fehler beim Löschen der Aktion:', error);
+        alert('Fehler beim Löschen der Aktion: ' + error.message);
+      }
+    }
+
+    // Seite initial laden
+    showMainPage();
+  </script>
+</body>
+</html> 
